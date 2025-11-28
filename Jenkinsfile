@@ -20,34 +20,31 @@ pipeline {
             }
         }
 
-        stage('Assume Role') {
+        stage('Assume, Build and Deploy') {
             steps {
                 script {
-                    def credsText = sh(
-                        script: """
-                            aws sts assume-role \
-                            --role-arn arn:aws:iam::029756584744:role/3rdparty-jenkins-manage-cfn \
-                            --role-session-name jenkins-session \
-                            --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
-                            --output text
-                        """,
-                        returnStdout: true
-                    ).trim()
+                    sh """
+                        set -e
 
-                    def parts = credsText.split(/\s+/)
-                    env.AWS_ACCESS_KEY_ID     = parts[0]
-                    env.AWS_SECRET_ACCESS_KEY = parts[1]
-                    env.AWS_SESSION_TOKEN     = parts[2]
+                        read AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN <<< \\
+                        \$(aws sts assume-role \\
+                            --role-arn arn:aws:iam::029756584744:role/3rdparty-jenkins-manage-cfn \\
+                            --role-session-name jenkins-session-\$BUILD_NUMBER \\
+                            --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \\
+                            --output text)
+
+                        export AWS_ACCESS_KEY_ID
+                        export AWS_SECRET_ACCESS_KEY
+                        export AWS_SESSION_TOKEN
+
+                        aws sts get-caller-identity
+
+                        sam build
+                        sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
+                    """
                 }
             }
         }
 
-        stage("Build and Deploy") {
-            steps {
-                sh 'aws sts get-caller-identity'
-                sh 'sam build'
-                sh 'sam deploy --no-confirm-changeset --no-fail-on-empty-changeset'
-            }
-        }
     }
 }
