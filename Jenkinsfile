@@ -13,6 +13,11 @@ pipeline {
     }
 
     stages {
+        stage('Run Tests') {
+            steps {
+                sh 'python -m unittest test_calc.py'
+            }
+        }
 
         stage('Assume Deployment Role') {
             steps {
@@ -28,7 +33,7 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    def creds = readJSON text: roleJson
+                    def creds = new groovy.json.JsonSlurper().parseText(roleJson)
 
                     env.AWS_ACCESS_KEY_ID     = creds.AccessKeyId
                     env.AWS_SECRET_ACCESS_KEY = creds.SecretAccessKey
@@ -40,12 +45,6 @@ pipeline {
         stage('Verify Identity After AssumeRole') {
             steps {
                 sh 'aws sts get-caller-identity'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh 'python -m unittest test_calc.py'
             }
         }
 
