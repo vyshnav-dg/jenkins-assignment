@@ -35,6 +35,7 @@ pipeline {
                         returnStdout: true
                     ).trim()
                     def creds = new JsonSlurper().parseText(roleOutJson)
+                    println creds
                     env.AWS_ACCESS_KEY_ID = creds.AccessKeyId
                     env.AWS_SECRET_ACCESS_KEY = creds.SecretAccessKey
                     env.AWS_SESSION_TOKEN = creds.SessionToken
